@@ -58,6 +58,13 @@
 (defvar jedi:setup-function nil)
 (defvar jedi:mode-function nil)
 
+(defvar-local jedi:virtualenv nil
+  "Path to virtualenv for the current buffer.
+
+You must arrange for this variable to be set appropriately in
+every python buffer. This should probably be done in your
+`python-mode-hook'.")
+
 
 ;;; Configuration variables
 
@@ -719,10 +726,11 @@ See: https://github.com/tkf/emacs-jedi/issues/54"
         ;; line=0 is an error for jedi, but is possible for empty buffers.
         (line        (max 1 (count-lines (point-min) (min (1+ (point)) (point-max)))))
         (column      (- (point) (line-beginning-position)))
-        (source-path (jedi:-buffer-file-name)))
+        (source-path (jedi:-buffer-file-name))
+        (virtualenv (and jedi:virtualenv (expand-file-name jedi:virtualenv))))
     (epc:call-deferred (jedi:get-epc)
                        method-name
-                       (list source line column source-path))))
+                       (list source line column source-path virtualenv))))
 
 
 ;;; Completion

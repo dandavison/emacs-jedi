@@ -153,23 +153,6 @@ class JediEPCHandler(object):
     @classmethod
     def _get_script_path_kwargs(cls, sys_path, virtual_envs, sys_path_append):
         result = {}
-        if jedi_create_environment:
-            # Need to specify some environment explicitly to workaround
-            # https://github.com/davidhalter/jedi/issues/1242. Otherwise jedi
-            # will create a lot of child processes.
-            if virtual_envs:
-                primary_env, virtual_envs = virtual_envs[0], virtual_envs[1:]
-                primary_env = path_expand_vars_and_user(primary_env)
-            else:
-                primary_env = None
-            try:
-                result['environment'] = jedi_create_environment(primary_env)
-            except Exception:
-                logger.warning(
-                    'Cannot create environment for %r', primary_env, exc_info=1
-                )
-                if primary_env is not None:
-                    result['environment'] = jedi_create_environment(None)
 
         if not sys_path and not virtual_envs and not sys_path_append:
             # No additional path customizations.
@@ -194,12 +177,14 @@ class JediEPCHandler(object):
         result['sys_path'] = [p for p in final_sys_path if not_seen_yet(p)]
         return result
 
-    def jedi_script(self, source, line, column, source_path):
+    def jedi_script(self, source, line, column, source_path, virtualenv):
         if NEED_ENCODE:
             source = source.encode('utf-8')
             source_path = source_path and source_path.encode('utf-8')
         return jedi.Script(
-            source, line, column, source_path or '', **self.script_kwargs
+            source, line, column, source_path or '',
+            environment=jedi_create_environment(virtualenv),
+            **self.script_kwargs
         )
 
     def complete(self, *args):
