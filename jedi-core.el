@@ -556,21 +556,14 @@ Tries to find (car command) in \"exec-path\"."
         (cons command-path (cdr command))
       command)))
 
-(defun jedi:--start-server (command)
-  "Return the live EPC server or start a new one for COMMAND."
-  (let* ((resolved-command (jedi:--resolve-server-command command)))
-    (if (and jedi:epc (jedi:epc--live-p jedi:epc))
-        jedi:epc
-      (let* ((default-directory "/")
-             (mngr (jedi:epc--start-epc (car resolved-command) (cdr command))))
-        mngr))))
-
-
 (defun jedi:start-server ()
+  "Start Jedi server if it's not running, and return the server."
   (if (jedi:epc--live-p jedi:epc)
       (message "Jedi server is already started!")
-    (setq jedi:epc (jedi:--start-server
-                    (append jedi:server-command jedi:server-args))))
+    (let* ((command (append jedi:server-command jedi:server-args))
+           (default-directory "/"))
+      (setq jedi:epc
+            (jedi:epc--start-epc (car (jedi:--resolve-server-command command)) (cdr command)))))
   jedi:epc)
 
 (defun jedi:stop-server ()
