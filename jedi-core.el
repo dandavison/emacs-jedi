@@ -178,10 +178,7 @@ Note that Jedi server run by the same command is pooled.  So,
 there is only one Jedi server for the same set of command.  If
 you want to check how many EPC servers are running, use the EPC
 GUI: M-x `epc:controller'.  You will see a table of EPC connections
-for Jedi.el and other EPC applications.
-
-If you want to start a new ad-hoc server for the current buffer,
-use the command `jedi:start-dedicated-server'."
+for Jedi.el and other EPC applications."
   :group 'jedi
   :type '(repeat string))
 
@@ -670,36 +667,6 @@ value to all buffers."
   (if (jedi:epc--live-p jedi:epc)
       jedi:epc
     (jedi:start-server)))
-
-;;;###autoload
-(defun jedi:start-dedicated-server (command)
-  "Start Jedi server dedicated to this buffer.
-This is useful, for example, when you want to use different
-`sys.path' for some buffer.  When invoked as an interactive
-command, it asks you how to start the Jedi server.  You can edit
-the command in minibuffer to specify the way Jedi server run.
-
-If you want to setup how Jedi server is started programmatically
-per-buffer/per-project basis, make `jedi:server-command' and
-`jedi:server-args' buffer local and set it in `python-mode-hook'.
-See also: `jedi:server-args'."
-  (interactive
-   (list (split-string-and-unquote
-          (read-string "Run Jedi server: "
-                       (mapconcat
-                        #'identity
-                        (append jedi:server-command
-                                jedi:server-args)
-                        " ")))))
-  ;; Reset `jedi:epc' so that a new server is created when COMMAND is
-  ;; new.  If it is already in the server pool, the server instance
-  ;; already in the pool is picked up by `jedi:start-server'.
-  (setq jedi:epc nil)
-  ;; Set `jedi:server-command', so that this command is used
-  ;; when restarting EPC server of this buffer.
-  (set (make-local-variable 'jedi:server-command) command)
-  (set (make-local-variable 'jedi:server-args) nil)
-  (jedi:start-server))
 
 (defun jedi:-buffer-file-name ()
   "Return `buffer-file-name' without text properties.
@@ -1328,9 +1295,7 @@ open that buffer.
 
 You can also pass ``--log-traceback`` option to jediepcserver.py
 to start server with traceback logging turned on.  This is useful when
-there is a problem in communication (thus this command does not work).
-You can use `jedi:start-dedicated-server' to restart EPC server for the
-current buffer with specific arguments."
+there is a problem in communication (thus this command does not work)."
   (interactive)
   (deferred:$
     (epc:call-deferred (jedi:get-epc) 'toggle_log_traceback nil)
