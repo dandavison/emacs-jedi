@@ -101,6 +101,15 @@ LogSettings = namedtuple(
     ],
 )
 
+def log(s):
+    with open("/tmp/jedi.log", "a") as fh:
+        fh.write(s + "\n")
+
+log(f">>> PID={os.getpid()} IMPORTING jediepcserver. VIRTUAL_ENV={os.environ.get('VIRTUAL_ENV')} sys.path is")
+log(f"sys.argv: {sys.argv}")
+for p in sys.path:
+    log(f"    {p}")
+log(">>>\n\n")
 
 try:
     jedi.create_environment
@@ -182,6 +191,7 @@ class JediEPCHandler(object):
         )
 
     def complete(self, *args):
+
         def _wrap_completion_result(comp):
             try:
                 docstr = comp.docstring()
@@ -197,10 +207,25 @@ class JediEPCHandler(object):
                 symbol=candidate_symbol(comp),
             )
 
-        return [
+        ret = [
             _wrap_completion_result(comp)
             for comp in self.jedi_script(*args).completions()
         ]
+
+        log(f">>> complete():")
+        log(f">>> jedi.__file__: {jedi.__file__}")
+        log("args:")
+        log(f"    {args[0].splitlines()[0]}...")
+        for arg in args[1:]:
+            log(f"    {arg}")
+        log(f"sys.argv: {sys.argv}")
+        log("sys.path")
+        for p in sys.path:
+            log(f"    {p}")
+        log(f"returning: {ret}")
+        log(">>>\n\n")
+
+        return ret
 
     def get_in_function_call(self, *args):
         sig = self.jedi_script(*args).call_signatures()
@@ -423,6 +448,8 @@ def jedi_epc_server(
     port_file.flush()
     if port_file is not sys.stdout:
         port_file.close()
+
+    log(f"\n>>> PID {os.getpid()} server_address: {server.server_address} {sys.argv[1:]}\n")
 
     # This is not supported Python-EPC API, but I am using this for
     # backward compatibility for Python-EPC < 0.0.4.  In the future,
