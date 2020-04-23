@@ -425,10 +425,9 @@ toolitp when inside of function call.
           (jedi:defined-names-deferred)
           (setq imenu-create-index-function jedi:imenu-create-index-function))
         (add-hook 'post-command-hook 'jedi:handle-post-command nil t)
-        (add-hook 'kill-buffer-hook 'jedi:server-pool--gc-when-idle nil t))
+        (add-hook 'kill-buffer-hook #'jedi:stop-server nil t))
     (remove-hook 'post-command-hook 'jedi:handle-post-command t)
-    (remove-hook 'kill-buffer-hook 'jedi:server-pool--gc-when-idle t)
-    (jedi:server-pool--gc-when-idle))
+    (remove-hook 'kill-buffer-hook #'jedi:stop-server t))
   (when jedi:mode-function
     (funcall jedi:mode-function)))
 
@@ -549,9 +548,6 @@ Python module imports."
 
 ;;; Server pool
 
-(defvar jedi:server-pool--table (make-hash-table :test 'equal)
-  "A hash table that holds a pool of EPC server instances.")
-
 (defun jedi:server-pool--resolve-command (command)
   "Resolve COMMAND using current environment.
 Tries to find (car command) in \"exec-path\"."
@@ -569,35 +565,6 @@ Tries to find (car command) in \"exec-path\"."
              (mngr (jedi:epc--start-epc (car resolved-command) (cdr command))))
         mngr))))
 
-(defun jedi:-get-servers-in-use ()
-  "Return a list of non-nil `jedi:epc' in all buffers."
-  (cl-loop with mngr-list
-           for buffer in (buffer-list)
-           for mngr = (with-current-buffer buffer jedi:epc)
-           when (and mngr (not (memq mngr mngr-list)))
-           collect mngr into mngr-list
-           finally return mngr-list))
-
-(defvar jedi:server-pool--gc-timer nil)
-
-(defun jedi:server-pool--gc ()
-  "Stop unused servers."
-  (let ((servers-in-use (jedi:-get-servers-in-use)))
-    (maphash
-     (lambda (key mngr)
-       (unless (memq mngr servers-in-use)
-         (remhash key jedi:server-pool--table)
-         (epc:stop-epc mngr)))
-     jedi:server-pool--table))
-  ;; Clear timer so that GC is started next time
-  ;; `jedi:server-pool--gc-when-idle' is called.
-  (setq jedi:server-pool--gc-timer nil))
-
-(defun jedi:server-pool--gc-when-idle ()
-  "Run `jedi:server-pool--gc' when idle."
-  (unless jedi:server-pool--gc-timer
-    (setq jedi:server-pool--gc-timer
-          (run-with-idle-timer 10 nil 'jedi:server-pool--gc))))
 
 
 ;;; Server management
@@ -622,20 +589,6 @@ later when it is needed."
   ;; It could be non-nil due to some error.  Rescue it in that case.
   (setq jedi:get-in-function-call--d nil)
   (setq jedi:defined-names--singleton-d nil))
-
-(defun jedi:stop-all-servers ()
-  "Stop all live Jedi servers.
-This is useful to apply new settings or VIRTUAL_ENV variable
-value to all buffers."
-  (interactive)
-  ;; Kill all servers attached to buffers
-  (cl-dolist (buf (buffer-list))
-    (when (buffer-live-p buf)
-      (with-current-buffer buf
-        (when (jedi:epc--live-p jedi:epc)
-          (jedi:stop-server)))))
-  ;; Kill all unused servers too.
-  (jedi:server-pool--gc))
 
 (defun jedi:get-epc ()
   "Get an EPC instance of a running server or start a new one."
