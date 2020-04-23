@@ -22,7 +22,9 @@
 
 ;;; Commentary:
 
-;;
+;; You must arrange for the variable `jedi:virtualenv' to be set appropriately
+;; in every python buffer. This should probably be done in your
+;; `python-mode-hook'.
 
 ;;; Code:
 
@@ -68,30 +70,21 @@ every python buffer. This should probably be done in your
 
 ;;; Configuration variables
 
-(defcustom jedi:environment-root nil
-  "Name of Python environment to use.
-If it is nil, `python-environment-default-root-name' is used.
-
-You can specify a full path instead of a name (relative path).
-In that case, `python-environment-directory' is ignored and
-Python virtual environment is created at the specified path."
+(defcustom jedi:server-virtualenv "~/.emacs.d/.emacs-jedi-virtualenv"
+  "Name of Python environment to use."
   :group 'jedi
   :type '(choice (directory
                   (const nil))))
 
 
-(defcustom jedi:environment-virtualenv nil
-  "``virtualenv`` command to use.  A list of string.
-If it is nil, `python-environment-virtualenv' is used instead.
-
-You must set non-`nil' value to `jedi:environment-root' in order
-to make this setting work."
+(defcustom jedi:server-virtualenv-command '("python" "-m" "venv")
+  "``virtualenv`` command to use when installing the server.  A list of strings."
   :group 'jedi
   :type '(repeat string))
 
 
 (defun jedi:-env-server-command ()
-  (let* ((getbin (lambda (x) (python-environment-bin x jedi:environment-root)))
+  (let* ((getbin (lambda (x) (python-environment-bin x jedi:server-virtualenv)))
          (script (or (funcall getbin "jediepcserver")
                      (funcall getbin "jediepcserver.py"))))
     (when script
@@ -133,7 +126,7 @@ Otherwise, it is set to::
        (setq jedi:server-command '(\"PATH/TO/jediepcserver.py\"))
 
 If you want to use a specific version of Python, setup
-`jedi:environment-virtualenv' variable appropriately and
+`jedi:server-virtualenv-command' variable appropriately and
 reinstall jediepcserver.py.
 
 If you want to pass some arguments to the Jedi server command,
@@ -1127,9 +1120,9 @@ run this every time after you update Jedi.el to sync version of
 Python modules used by Jedi.el and Jedi.el itself.
 
 You can modify the location of the environment by changing
-`jedi:environment-root' and/or `python-environment-directory'.  More
+`jedi:server-virtualenv' and/or `python-environment-directory'.  More
 specifically, Jedi.el will install Python modules under the directory
-``PYTHON-ENVIRONMENT-DIRECTORY/JEDI:ENVIRONMENT-ROOT``.  Note that you
+``PYTHON-ENVIRONMENT-DIRECTORY/JEDI:SERVER-VIRTUALENV``.  Note that you
 need command line program ``virtualenv``.  If you have the command in
 an unusual location, use `python-environment-virtualenv' to specify the
 location.
@@ -1151,8 +1144,8 @@ See also:
   (interactive)
   (deferred:$
     (python-environment-run jedi:install-server--command
-                            jedi:environment-root
-                            jedi:environment-virtualenv)
+                            jedi:server-virtualenv
+                            jedi:server-virtualenv-command)
     (deferred:watch it
       (lambda (_)
         (setq-default jedi:server-command (jedi:-env-server-command))))))
@@ -1161,7 +1154,7 @@ See also:
 (defun jedi:reinstall-server ()
   "Reinstall Jedi server script jediepcserver.py."
   (interactive)
-  (let ((root (python-environment-root-path jedi:environment-root)))
+  (let ((root (python-environment-root-path jedi:server-virtualenv)))
     (when (yes-or-no-p
            (format "Reinstall jedi server environment(%s) ?" (abbreviate-file-name root)))
       (delete-directory root t)
@@ -1172,8 +1165,8 @@ See also:
   "Blocking version `jedi:install-server'."
   (prog1
       (python-environment-run-block jedi:install-server--command
-                                    jedi:environment-root
-                                    jedi:environment-virtualenv)
+                                    jedi:server-virtualenv
+                                    jedi:server-virtualenv-command)
     (setq-default jedi:server-command (jedi:-env-server-command))))
 
 (defcustom jedi:install-python-jedi-dev-command
@@ -1189,8 +1182,8 @@ See also:
   (interactive)
   (deferred:$
     (python-environment-run jedi:install-python-jedi-dev-command
-                            jedi:environment-root
-                            jedi:environment-virtualenv)
+                            jedi:server-virtualenv
+                            jedi:server-virtualenv-command)
     (deferred:watch it
       (lambda (_)
         (message "\
