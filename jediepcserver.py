@@ -63,9 +63,6 @@ parser.add_argument(
     '--sys-path-append', default=[], action='append',
     help='paths to be appended at the end of `sys.path`.')
 parser.add_argument(
-    '--virtual-env', '-v', default=[], action='append',
-    help='paths to be used as if VIRTUAL_ENV is set to it.')
-parser.add_argument(
     '--log', help='Save server log to this file.')
 parser.add_argument(
     '--log-level',
@@ -134,10 +131,9 @@ def get_venv_sys_path(venv):
 
 
 class JediEPCHandler(object):
-    def __init__(self, sys_path=(), virtual_envs=(), sys_path_append=()):
+    def __init__(self, sys_path=(), sys_path_append=()):
         self.script_kwargs = self._get_script_path_kwargs(
             sys_path=sys_path,
-            virtual_envs=virtual_envs,
             sys_path_append=sys_path_append,
         )
 
@@ -151,10 +147,10 @@ class JediEPCHandler(object):
         return sys.path
 
     @classmethod
-    def _get_script_path_kwargs(cls, sys_path, virtual_envs, sys_path_append):
+    def _get_script_path_kwargs(cls, sys_path, sys_path_append):
         result = {}
 
-        if not sys_path and not virtual_envs and not sys_path_append:
+        if not sys_path and not sys_path_append:
             # No additional path customizations.
             return result
 
@@ -162,8 +158,6 @@ class JediEPCHandler(object):
         # specified, or jedi version doesn't support environments.
         final_sys_path = []
         final_sys_path.extend(path_expand_vars_and_user(p) for p in sys_path)
-        for p in virtual_envs:
-            final_sys_path.extend(get_venv_sys_path(path_expand_vars_and_user(p)))
         final_sys_path.extend(
             path_expand_vars_and_user(p) for p in sys_path_append
         )
@@ -388,7 +382,6 @@ def jedi_epc_server(
         port=0,
         port_file=sys.stdout,
         sys_path=[],
-        virtual_env=[],
         sys_path_append=[],
         debugger=None,
         log_traceback=None,
@@ -399,20 +392,12 @@ def jedi_epc_server(
 
     """
     logger.debug(
-        'jedi_epc_server: sys_path=%r virtual_env=%r sys_path_append=%r',
-        sys_path, virtual_env, sys_path_append,
+        'jedi_epc_server: sys_path=%r sys_path_append=%r',
+        sys_path, sys_path_append,
     )
-
-    if not virtual_env and os.getenv('VIRTUAL_ENV'):
-        logger.debug(
-            'Taking virtual env from VIRTUAL_ENV: %r',
-            os.environ['VIRTUAL_ENV'],
-        )
-        virtual_env = [os.environ['VIRTUAL_ENV']]
 
     handler = JediEPCHandler(
         sys_path=sys_path,
-        virtual_envs=virtual_env,
         sys_path_append=sys_path_append,
     )
     logger.debug(
@@ -453,17 +438,6 @@ def jedi_epc_server(
         server.logger.addHandler(handler)
         server.logger.setLevel(logging.DEBUG)
     return server
-
-
-# def add_virtualenv_path(venv):
-#     """Add virtualenv's site-packages to `sys.path`."""
-#     venv = os.path.abspath(venv)
-#     paths = glob.glob(os.path.join(
-#         venv, 'lib', 'python*', 'site-packages'))
-#     if not paths:
-#         raise ValueError('Invalid venv: no site-packages found: %s' % venv)
-#     for path in paths:
-#         site.addsitedir(path)
 
 
 def main(args=None):

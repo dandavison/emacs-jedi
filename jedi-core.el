@@ -153,16 +153,6 @@ server, do something like this::
           '(\"--sys-path\" \"MY/SPECIAL/PATH\"
             \"--sys-path\" \"MY/OTHER/SPECIAL/PATH\"))
 
-If you want to include some virtualenv, do something like the
-following.  Note that actual environment variable ``VIRTUAL_ENV``
-is treated automatically so you don't need to pass it.  Also,
-you need to start Jedi EPC server with the same python version
-that you use for the virtualenv.::
-
-    (setq jedi:server-args
-          '(\"--virtual-env\" \"SOME/VIRTUAL_ENV_1\"
-            \"--virtual-env\" \"SOME/VIRTUAL_ENV_2\"))
-
 To see what other arguments Jedi server can take, execute the
 following command::
 
@@ -419,10 +409,6 @@ avoid collision by something like this::
   :group 'jedi
   :type 'boolean)
 
-(defcustom jedi:import-python-el-settings t
-  "Automatically import settings from python.el variables."
-  :group 'jedi
-  :type 'boolean)
 
 (defcustom jedi:goto-definition-marker-ring-length 16
   "Length of marker ring to store `jedi:goto-definition' call positions"
@@ -1218,24 +1204,6 @@ Paste the result of this function in bug report."
 
 ;;; Setup
 
-(defun jedi:import-python-el-settings-setup ()
-  "Make jedi aware of python.el virtualenv and path settings.
-This is automatically added to the `jedi-mode-hook' when
-`jedi:import-python-el-settings' is non-nil."
-  (let ((args))
-    (when (bound-and-true-p python-shell-extra-pythonpaths)
-      (mapc
-       (lambda (path)
-         (setq args (append (list "--sys-path" path) args)))
-       python-shell-extra-pythonpaths))
-    (when (bound-and-true-p python-shell-virtualenv-path)
-      (setq args
-            (append
-             (list "--virtual-env" python-shell-virtualenv-path)
-             args)))
-    (when args
-      (set (make-local-variable 'jedi:server-args)
-           (append args jedi:server-args)))))
 
 ;;;###autoload
 (defun jedi:setup ()
@@ -1253,14 +1221,6 @@ what jedi can do."
   (interactive)
   (when jedi:setup-function
     (funcall jedi:setup-function))
-  (when jedi:import-python-el-settings
-    ;; Hack to access buffer/dir-local vars: http://bit.ly/Y5IfMV.
-    ;; Given that `jedi:setup' is added to the `python-mode-hook'
-    ;; this will modify `hack-local-variables-hook' on python
-    ;; buffers only and will allow us to access buffer/directory
-    ;; local variables in `jedi:import-python-el-settings-setup'.
-    (add-hook 'hack-local-variables-hook
-              #'jedi:import-python-el-settings-setup nil t))
   (jedi-mode 1))
 
 
@@ -1289,15 +1249,10 @@ need command line program ``virtualenv``.  If you have the command in
 an unusual location, use `python-environment-virtualenv' to specify the
 location.
 
-.. NOTE:: jediepcserver.py is installed in a virtual environment but it
-   does not mean Jedi.el cannot recognize the modules in virtual
-   environment you are using for your Python development.  Jedi
-   EPC server recognize the virtualenv it is in (i.e., the
-   environment variable ``VIRTUAL_ENV`` in your Emacs) and then
-   add modules in that environment to its ``sys.path``.  You can
-   also add ``--virtual-env PATH/TO/ENV`` to `jedi:server-args'
-   to include modules of virtual environment even you launch
-   Emacs outside of the virtual environment.
+.. NOTE:: When Jedi analyzes your own code, the virtualenv it
+   uses to resolve your import statements is determined by
+   `jedi:virtualenv'. This has nothing to do with the virtualenv
+   in which jediepcserver.py is installed.
 
 .. NOTE:: It is highly recommended to use this command to install
    Python modules for Jedi.el.  You still can install Python
