@@ -156,29 +156,7 @@ server, do something like this::
 To see what other arguments Jedi server can take, execute the
 following command::
 
-    python jediepcserver.py --help
-
-
-**Advanced usage**
-
-Sometimes you want to configure how Jedi server is started per
-buffer.  To do that, you should make this variable buffer local
-in `python-mode-hook' and set it to some buffer specific variable,
-like this::
-
-  (defun my-jedi-server-setup ()
-    (let ((cmds (GET-SOME-PROJECT-SPECIFIC-COMMAND))
-          (args (GET-SOME-PROJECT-SPECIFIC-ARGS)))
-      (when cmds (set (make-local-variable 'jedi:server-command) cmds))
-      (when args (set (make-local-variable 'jedi:server-args) args))))
-
-  (add-hook 'python-mode-hook 'my-jedi-server-setup)
-
-Note that Jedi server run by the same command is pooled.  So,
-there is only one Jedi server for the same set of command.  If
-you want to check how many EPC servers are running, use the EPC
-GUI: M-x `epc:controller'.  You will see a table of EPC connections
-for Jedi.el and other EPC applications."
+    python jediepcserver.py --help"
   :group 'jedi
   :type '(repeat string))
 
@@ -584,14 +562,11 @@ Tries to find (car command) in \"exec-path\"."
 
 (defun jedi:server-pool--start (command)
   "Get an EPC server for COMMAND from server pool or start a new one."
-  (let* ((resolved-command (jedi:server-pool--resolve-command command))
-         (cached (gethash resolved-command jedi:server-pool--table)))
-    (if (and cached (jedi:epc--live-p cached))
-        cached
+  (let* ((resolved-command (jedi:server-pool--resolve-command command)))
+    (if (and jedi:epc (jedi:epc--live-p jedi:epc))
+        jedi:epc
       (let* ((default-directory "/")
              (mngr (jedi:epc--start-epc (car resolved-command) (cdr command))))
-        (puthash resolved-command mngr jedi:server-pool--table)
-        (jedi:server-pool--gc-when-idle)
         mngr))))
 
 (defun jedi:-get-servers-in-use ()
